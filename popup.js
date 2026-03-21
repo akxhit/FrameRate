@@ -11,8 +11,6 @@
     mode: 'seq',         // seq | vid | smooth
     isRecording: false,
     isPaused: false,
-    timerInterval: null,
-    timerSeconds: 0,
     scrollPercent: 0,
   };
 
@@ -28,7 +26,6 @@
     freqNeedle:     $('#freqNeedle'),
     freqTicks:      $('#freqTicks'),
     acousticGrill:  $('#acousticGrill'),
-    timerDisplay:   $('#timerDisplay'),
     statusMode:     $('#statusMode'),
     statusRes:      $('#statusRes'),
     statusFps:      $('#statusFps'),
@@ -65,10 +62,8 @@
         els.dialLabel.classList.add('active');
         els.statusIndicator.classList.remove('ready');
         els.statusIndicator.classList.add('recording');
-        els.timerDisplay.classList.add('active');
         els.modeBtns.forEach(b => b.style.pointerEvents = 'none');
         els.statusMsg.textContent = 'Recording in progress... (Shortcut: Alt+S or Cmd+Shift+S to stop)';
-        startTimer();
       } else {
         updateStatusDisplay();
         els.statusIndicator.classList.add('ready');
@@ -181,7 +176,6 @@
     els.dialLabel.classList.add('active');
     els.statusIndicator.classList.remove('ready');
     els.statusIndicator.classList.add('recording');
-    els.timerDisplay.classList.add('active');
     
     // Disable mode buttons
     els.modeBtns.forEach(b => b.style.pointerEvents = 'none');
@@ -209,13 +203,11 @@
       
       case 'vid':
         els.statusMsg.textContent = 'Recording video...';
-        startTimer();
         chrome.runtime.sendMessage({ action: 'startVideoRecording', settings });
         break;
       
       case 'smooth':
         els.statusMsg.textContent = 'Recording walkthrough...';
-        startTimer();
         chrome.runtime.sendMessage({ action: 'startSmoothVideo', settings });
         break;
         
@@ -231,7 +223,6 @@
   // ─── STOP CAPTURE ───
   function stopCapture() {
     state.isRecording = false;
-    stopTimer();
     
     // Visual reset
     els.masterDial.classList.remove('recording');
@@ -239,7 +230,6 @@
     els.dialLabel.classList.remove('active');
     els.statusIndicator.classList.remove('recording', 'processing');
     els.statusIndicator.classList.add('ready');
-    els.timerDisplay.classList.remove('active');
     
     // Re-enable mode buttons
     els.modeBtns.forEach(b => b.style.pointerEvents = 'auto');
@@ -247,30 +237,6 @@
     els.statusMsg.textContent = 'Processing...';
     
     chrome.runtime.sendMessage({ action: 'stopCapture', mode: state.mode });
-  }
-
-  // ─── TIMER ───
-  function startTimer() {
-    state.timerSeconds = 0;
-    updateTimerDisplay();
-    state.timerInterval = setInterval(() => {
-      state.timerSeconds++;
-      updateTimerDisplay();
-    }, 1000);
-  }
-
-  function stopTimer() {
-    if (state.timerInterval) {
-      clearInterval(state.timerInterval);
-      state.timerInterval = null;
-    }
-  }
-
-  function updateTimerDisplay() {
-    const h = Math.floor(state.timerSeconds / 3600).toString().padStart(2, '0');
-    const m = Math.floor((state.timerSeconds % 3600) / 60).toString().padStart(2, '0');
-    const s = (state.timerSeconds % 60).toString().padStart(2, '0');
-    els.timerDisplay.textContent = `${h}:${m}:${s}`;
   }
 
   // ─── SCROLL PERCENTAGE UPDATE ───
@@ -288,7 +254,6 @@
       
       case 'captureComplete':
         state.isRecording = false;
-        stopTimer();
         resetUI();
         els.statusMsg.textContent = `✓ ${message.filename || 'Capture'} saved!`;
         setTimeout(() => {
@@ -298,7 +263,6 @@
       
       case 'captureError':
         state.isRecording = false;
-        stopTimer();
         resetUI();
         els.statusMsg.textContent = `✗ Error: ${message.error}`;
         setTimeout(() => {
@@ -319,7 +283,6 @@
     els.dialLabel.classList.remove('active');
     els.statusIndicator.classList.remove('recording', 'processing');
     els.statusIndicator.classList.add('ready');
-    els.timerDisplay.classList.remove('active');
     els.modeBtns.forEach(b => b.style.pointerEvents = 'auto');
   }
 
