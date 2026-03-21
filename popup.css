@@ -392,8 +392,8 @@ html, body {
 /* ─── MODE SWITCHES ─── */
 .mode-switches {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px; /* Slightly reduced gap to fit 5 items */
   padding: 0 4px;
 }
 

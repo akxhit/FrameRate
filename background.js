@@ -89,6 +89,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           await handleShotCapture(message.settings);
           break;
 
+        case 'startFullPageCapture':
+          await handleFullPageCapture(message.settings);
+          break;
+
         case 'startSeqCapture':
           await handleSeqCapture(message.settings);
           break;
@@ -111,11 +115,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // ── From Content Script ──
         case 'scrollSegmentReady':
-          await captureSeqFrame(message);
+          await captureSegmentReady(message);
           break;
 
         case 'fullPageScrollComplete':
-          await finalizeSeqCapture();
+          if (activeCapture && activeCapture.mode === 'fullpage') {
+            await finalizeFullPageCapture();
+          } else {
+            await finalizeSeqCapture();
+          }
           break;
 
         case 'smoothScrollComplete':
@@ -205,10 +213,36 @@ async function handleSeqCapture(settings) {
   });
 }
 
-async function captureSeqFrame(message) {
-  if (!activeCapture || activeCapture.mode !== 'seq') return;
+// ─── FULL PAGE STITCHING ───
+async function handleFullPageCapture(settings) {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) return notifyError('No active tab found');
 
-  // Wait extra frames for lazy-loading and quota limits
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  activeCapture = { 
+    mode: 'fullpage', 
+    tabId: tab.id, 
+    settings
+  };
+
+  await ensureOffscreenDocument();
+
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ['content.js']
+  });
+
+  chrome.tabs.sendMessage(tab.id, {
+    action: 'beginFullPageCapture',
+    quality: settings.quality,
+    delay: 500
+  });
+}
+
+// ─── SEGMENT CAPTURE ROUTER ───
+async function captureSegmentReady(message) {
+  if (!activeCapture || (activeCapture.mode !== 'seq' && activeCapture.mode !== 'fullpage')) return;
+
   await delay(200);
 
   let dataUrl = null;
@@ -224,28 +258,36 @@ async function captureSeqFrame(message) {
     } catch (e) {
       if (e.message && e.message.includes('MAX_CAPTURE_VISIBLE_TAB_CALLS')) {
         retries--;
-        await delay(350); // Chrome enforces strict limits per second, throttle it
+        await delay(350); 
       } else {
         throw e;
       }
     }
   }
 
-  if (!dataUrl) {
-    throw new Error("Failed to capture screen segment after multiple quota retries.");
-  }
+  if (!dataUrl) throw new Error("Failed to capture screen segment after quota retries.");
 
   try {
-    const frameNum = String(message.index + 1).padStart(3, '0');
-    const filename = `${activeCapture.folder}/frame_${frameNum}.png`;
-    downloadQueue.push(dataUrl, filename);
+    if (activeCapture.mode === 'seq') {
+      const frameNum = String(message.index + 1).padStart(3, '0');
+      const filename = `${activeCapture.folder}/frame_${frameNum}.png`;
+      downloadQueue.push(dataUrl, filename);
+    } else if (activeCapture.mode === 'fullpage') {
+      chrome.runtime.sendMessage({
+        action: 'stitchSegment',
+        target: 'offscreen',
+        dataUrl: dataUrl,
+        yOffset: message.scrollY,
+        totalHeight: message.totalHeight,
+        devicePixelRatio: message.devicePixelRatio
+      });
+    }
 
     chrome.runtime.sendMessage({
       action: 'captureProgress',
       text: `Captured segment ${message.index + 1}/${message.totalSegments}...`
     });
 
-    // Tell content script to scroll to next segment
     chrome.tabs.sendMessage(activeCapture.tabId, { action: 'captureNextSegment' });
   } catch (e) {
     console.error('[FrameRate] Capture segment error:', e);
@@ -271,6 +313,37 @@ async function finalizeSeqCapture() {
   }, 500);
 }
 
+async function finalizeFullPageCapture() {
+  if (!activeCapture || activeCapture.mode !== 'fullpage') return;
+
+  chrome.runtime.sendMessage({
+    action: 'captureProgress',
+    text: 'Stitching final massive PNG...'
+  });
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  chrome.runtime.sendMessage({
+    action: 'finishStitching',
+    target: 'offscreen',
+    filename: `FrameRate_FullPage_${timestamp}.png`
+  });
+}
+
+async function finalizeFullPageCapture() {
+  if (!activeCapture || activeCapture.mode !== 'fullpage') return;
+
+  chrome.runtime.sendMessage({
+    action: 'captureProgress',
+    text: 'Stitching final massive PNG...'
+  });
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  chrome.runtime.sendMessage({
+    action: 'finishStitching',
+    target: 'offscreen',
+    filename: `FrameRate_FullPage_${timestamp}.png`
+  });
+}
 
 // ─── VIDEO RECORDING (Tab Capture) ───
 async function handleVideoRecording(settings) {

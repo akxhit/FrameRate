@@ -141,6 +141,7 @@
   function updateStatusDisplay() {
     const modeLabels = {
       shot:  'SHOT',
+      fullpage: 'FULL PAGE',
       seq:   'SEQ\u00A0',
       vid:   'VIDEO',
       smooth:'FULL SCREEN VID',
@@ -216,6 +217,13 @@
         els.statusMsg.textContent = 'Recording walkthrough...';
         startTimer();
         chrome.runtime.sendMessage({ action: 'startSmoothVideo', settings });
+        break;
+        
+      case 'fullpage':
+        els.statusMsg.textContent = 'Stitching full page...';
+        els.statusIndicator.classList.remove('recording');
+        els.statusIndicator.classList.add('processing');
+        chrome.runtime.sendMessage({ action: 'startFullPageCapture', settings });
         break;
     }
   }

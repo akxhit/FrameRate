@@ -115,7 +115,8 @@
       viewportHeight: scrollState.viewportHeight,
       totalHeight: scrollState.totalHeight,
       index: scrollState.segmentIndex,
-      totalSegments: scrollState.totalSegments
+      totalSegments: scrollState.totalSegments,
+      devicePixelRatio: window.devicePixelRatio || 1
     });
   }
 

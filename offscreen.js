@@ -25,6 +25,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'stopRecording':
           stopRecording();
           break;
+
+        case 'stitchSegment':
+          await handleStitchSegment(message);
+          break;
+
+        case 'finishStitching':
+          await handleFinishStitching(message.filename);
+          break;
       }
     } catch (error) {
       console.error('[FrameRate Offscreen] Error:', error);
@@ -184,4 +192,59 @@ function getSupportedMimeType() {
   }
 
   return 'video/webm';
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMAGE STITCHING ENGINE
+// ═══════════════════════════════════════════════════════════
+
+async function handleStitchSegment(msg) {
+  const canvas = document.getElementById('stitchCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = msg.devicePixelRatio || 1;
+  
+  const img = new Image();
+  img.src = msg.dataUrl;
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = () => reject(new Error("Failed to load image segment data"));
+  });
+
+  // Resize canvas on the very first frame to the exact physical pixel height
+  // (Or if the canvas happens to be exactly the default 300x150 size)
+  if (msg.yOffset === 0 || (canvas.width === 300 && canvas.height === 150)) {
+    canvas.width = img.width; 
+    canvas.height = msg.totalHeight * dpr;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Draw exactly at the computed pixel Y-offset
+  const yPixelOffset = msg.yOffset * dpr;
+  ctx.drawImage(img, 0, yPixelOffset, img.width, img.height);
+}
+
+async function handleFinishStitching(filename) {
+  const canvas = document.getElementById('stitchCanvas');
+  
+  try {
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((resultBlob) => {
+        if (resultBlob) resolve(resultBlob);
+        else reject(new Error("canvas.toBlob failed. Canvas may exceed browser 16,384px height limits."));
+      }, 'image/png', 1.0);
+    });
+    
+    // Transfer the generated blob using an Object URL
+    const blobUrl = URL.createObjectURL(blob);
+    chrome.runtime.sendMessage({
+      action: 'videoComplete', 
+      blob: blobUrl,
+      filename: filename
+    });
+  } catch (err) {
+    chrome.runtime.sendMessage({
+      action: 'processingError',
+      error: 'Stitching runtime error: ' + err.message
+    });
+  }
 }
