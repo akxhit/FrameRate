@@ -143,7 +143,7 @@
       shot:  'SHOT',
       seq:   'SEQ\u00A0',
       vid:   'VIDEO',
-      smooth:'SMOOTH',
+      smooth:'FULL SCREEN VID',
     };
     
     els.statusMode.textContent = modeLabels[state.mode] || 'SEQ';

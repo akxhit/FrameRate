@@ -410,6 +410,7 @@ html, body {
   border: 1px solid rgba(255,255,255,0.4);
   background: var(--bg);
   transition: all 0.15s ease;
+  position: relative;
 }
 
 .mode-btn.active {
@@ -450,6 +451,76 @@ html, body {
   color: var(--text-secondary);
   text-transform: uppercase;
   transition: all 0.15s ease;
+}
+
+/* ─── TOOLTIPS ─── */
+.mode-tooltip {
+  position: absolute;
+  top: -42px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--text-primary);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-family: var(--font-ui);
+  text-align: center;
+  width: 140px;
+  white-space: normal;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  transition-delay: 0s;
+}
+
+.mode-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--text-primary) transparent transparent transparent;
+}
+
+.mode-btn:hover .mode-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 2s;
+}
+
+/* Edge collision fixes */
+.mode-btn:first-child .mode-tooltip {
+  left: 0;
+  transform: translateY(4px);
+}
+.mode-btn:first-child .mode-tooltip::after {
+  left: 20px;
+}
+.mode-btn:first-child:hover .mode-tooltip {
+  transform: translateY(0);
+}
+
+.mode-btn:last-child .mode-tooltip {
+  left: auto;
+  right: 0;
+  transform: translateY(4px);
+}
+.mode-btn:last-child .mode-tooltip::after {
+  left: auto;
+  right: 20px;
+  transform: translateX(50%);
+}
+.mode-btn:last-child:hover .mode-tooltip {
+  transform: translateY(0);
 }
 
 /* ─── STATUS DISPLAY ─── */
