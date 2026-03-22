@@ -13,7 +13,7 @@ let mediaStream = null;
 
 // ─── MESSAGE HANDLER ───
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.target && message.target !== 'offscreen') return;
+  if (message.target !== 'offscreen') return false;
 
   (async () => {
     try {
@@ -42,8 +42,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     }
   })();
-
-  return true;
 });
 
 // ═══════════════════════════════════════════════════════════
