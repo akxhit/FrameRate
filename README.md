@@ -28,7 +28,7 @@ FrameRate includes 5 specialized capture modes:
 Need to stop a video or sequence capture fast? FrameRate actively listens for:
 
 * **Windows / Linux:** `Alt + S`
-* **macOS:** `Cmd + Shift + S`
+* **macOS:** `Cmd + S`
 
 Pressing this globally halts any running capture modes and forces the extension to instantly finalize and download your file.
 
